@@ -1,93 +1,57 @@
 package curcul;
 
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import org.junit.jupiter.api.BeforeAll;
+
+import curcul.model.UserData;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.is;
+
+import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 
 public class APITest {
-
-    @BeforeAll
-    static void setUp() {
-        RestAssured.baseURI = "https://reqres.in/";
+    @Test
+    @DisplayName("Проверка email с помощью моделей Lombok")
+    void checkSingleUserWithLombokTest() {
+        UserData data = given()
+                .spec(Specs.request)
+                .when()
+                .get("/users/10")
+                .then()
+                .spec(Specs.response)
+                .log().body()
+                .extract().as(UserData.class);
+        assertEquals(10, data.getUser().getId());
     }
 
     @Test
-    void listUserTest() {
+    @DisplayName("Проверка email с groovy")
+    void checkEmailUsingGroovy() {
         given()
-                .queryParam("page","2")
-                .log().uri()
+                .spec(Specs.request)
                 .when()
-                .get("/api/users")
+                .get("/users")
                 .then()
-                .log().status()
+                .spec(Specs.response)
                 .log().body()
-                .statusCode(200)
-                .body("total",is(12));
+                .body("data.findAll{it.email =~/.*?@reqres.in/}.email.flatten()",
+                        hasItem("charles.morris@reqres.in"));
     }
+
 
     @Test
-    void createUserTest() {
+    @DisplayName("Проверка id с groovy")
+    void checkUserIdUsingGroovy() {
         given()
-                .log().uri()
-                .body("{\"name\": \"morpheus\",\"job\": \"leader\"}")
-                .contentType(ContentType.JSON)
+                .spec(Specs.request)
                 .when()
-                .post("/api/users")
+                .get("/users")
                 .then()
-                .log().status()
+                .spec(Specs.response)
                 .log().body()
-                .statusCode(201)
-                .body("name", is("morpheus"))
-                .body("job", is("leader"));
+                .body("data.findAll{it.id == 6}.id.flatten()",
+                        hasItem(6));
     }
-
-    @Test
-    void updateUserTest() {
-        given()
-                .log().uri()
-                .pathParam("user", "2")
-                .body("{\"name\": \"morpheus\",\"job\": \"zion resident\"}")
-                .contentType(ContentType.JSON)
-                .when()
-                .put("/api/users/{user}")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(200)
-                .body("name", is("morpheus"))
-                .body("job", is("zion resident"));
-    }
-
-    @Test
-    void deleteUserTest() {
-        given()
-                .log().uri()
-                .pathParam("user", "2")
-                .when()
-                .delete("/api/users/{user}")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(204);
-    }
-
-    @Test
-    void loginUnsuccessfulTest() {
-        given()
-                .log().uri()
-                .body("{\"email\": \"peter@klaven\"}")
-                .contentType(ContentType.JSON)
-                .when()
-                .post("/api/login")
-                .then()
-                .log().status()
-                .log().body()
-                .statusCode(400)
-                .body("error", is("Missing password"));
-    }
-
 }
